@@ -1,6 +1,7 @@
 import os
 
 import logging
+from typing import List
 
 from requests import Response
 
@@ -56,22 +57,35 @@ class WeblateMigrator(HttpClient):
             return res.json()
         except Exception as e:
             logger.error(f"Failed to get component: {project_name}/{component_name}, Error: {str(e)}")
- 
-            
-    def _upload_pre_translated_po_files(self, project_name: str, component_name: str, directory_path: str):
-        pass
-            
-    def upload_translation_po_files(self, translation_id: str, directory_path: str):
-        for filename in os.listdir(directory_path):
-            if filename.endswith(".po"):
-                file_path = os.path.join(directory_path, filename)
+         
+    def _upload_file(self, url: str, file_path: str):
+        try:
+            return self.post(url, file_path = file_path)
+        except Exception as e:
+            logger.error(f"Failed to upload file: {file_path}, {e}")
 
-                with open(file_path, "rb") as file_content:
-                    try:
-                        self.upload_translation_file(translation_id, file_content)
-                        print(f"Successfully uploaded: {filename}")
-                    except Exception as e:
-                        print(f"Failed to upload: {filename}, Error: {str(e)}")
+    def upload_translation_po_files(self, project_name: str, component_name: str, language: str, dir_path: str):
+        upload_response = {
+            "project": project_name,
+            "component": component_name,
+            "language": language,
+        }
+        
+        files: List = []
+        
+        for filename in os.listdir(dir_path):
+            if filename.endswith(".po"):
+                file_path = os.path.join(dir_path, filename)
+                res = self._upload_file(f'api/translations/{project_name}/{component_name}/{language}/file/', file_path)
+                
+                if res.status_code > 400:
+                    logger.error(f"Failed to upload translation file: {file_path}, {res.text}")
+                    
+                files.append(res.json())
+        
+        upload_response["files"] = files
+        
+        return upload_response
 
 
 if __name__ == "__main__":
