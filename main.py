@@ -7,10 +7,11 @@ from typing import List
 from requests import Response
 
 from http_client import HttpClient
-from . import OPENDEV_OPENSTACK_WEB
 
 
+OPENDEV_OPENSTACK_WEB = "https://opendev.org/openstack/"
 logger = logging.getLogger(__name__)
+
 
 class WeblateMigrator(HttpClient):
     """https://docs.weblate.org/en/latest/user/files.html#uploading-translation-files"""
@@ -39,7 +40,7 @@ class WeblateMigrator(HttpClient):
         }
         return self.post(f"api/projects/{project_name}/components/", data)
     
-    def _parse_language(self, language: str) -> str:
+    def parse_language(self, language: str) -> str:
         """parse language from locale
 
         e.g. ko_KR -> ko
@@ -106,13 +107,16 @@ if __name__ == "__main__":
     # example path is /example/<project_name>/<component_name>/locale/<language>/LC_MESSAGES/<component_name>.po
     # e.g. /example/glance_store/glance_store/locale/ko_KR/LC_MESSAGES/glance_store.po
     # we need to get "openstack"/project_name, "openstack"/component_name, language, and dir_path
+    
+    base_path = "/example"
 
-    for project_name in os.listdir("/example"):
+    for project_name in os.listdir(base_path):
         project = migrator.get_or_create_project(project_name)
         
-        for component_name in os.listdir(f"/example/{project_name}"):
+        for component_name in os.listdir(f"{base_path}/{project_name}"):
             component = migrator.get_or_create_component(project_name, component_name)
             
-            for language in os.listdir(f"/example/{project_name}/{component_name}/locale"):
-                dir_path = f"/example/{project_name}/{component_name}/locale/{language}/LC_MESSAGES"
+            for locale in os.listdir(f"{base_path}/{project_name}/{component_name}/locale"):
+                language = migrator.parse_language(locale)
+                dir_path = f"{base_path}/{project_name}/{component_name}/locale/{language}/LC_MESSAGES"
                 migrator.upload_translation_po_files(project_name, component_name, language, dir_path)
