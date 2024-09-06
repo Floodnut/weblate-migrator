@@ -1,6 +1,7 @@
 import os
 
 import logging
+import re
 from typing import List
 
 from requests import Response
@@ -37,6 +38,17 @@ class WeblateMigrator(HttpClient):
             "slug": component_name,
         }
         return self.post(f"api/projects/{project_name}/components/", data)
+    
+    def _parse_language(self, language: str) -> str:
+        """parse language from locale
+
+        e.g. ko_KR -> ko
+        """
+        match = re.match(r'^([a-z]+)_', language)
+        if match:
+            return match.group(1)
+        else:
+            return language
         
     def get_or_create_project(self, project_name: str):
         try:
