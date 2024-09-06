@@ -42,7 +42,7 @@ class WeblateMigrator(HttpClient):
         try:
             res = self._get_project(project_name)
             if res.status_code == 404:
-                res = self.create_project(project_name)
+                res = self._create_project(project_name)
 
             return res.json()
         except Exception as e:
@@ -52,7 +52,7 @@ class WeblateMigrator(HttpClient):
         try:
             res = self._get_component(project_name, component_name)
             if res.status_code == 404:
-                res = self.create_component(project_name, component_name)
+                res = self._create_component(project_name, component_name)
 
             return res.json()
         except Exception as e:
