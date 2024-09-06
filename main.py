@@ -46,7 +46,7 @@ class WeblateMigrator(HttpClient):
 
             return res.json()
         except Exception as e:
-            logger.error(f"Failed to get project: {project_name}, Error: {str(e)}")
+            logger.error(f"Failed to get project: {project_name}, Error: {e}")
             
     def get_or_create_component(self, project_name: str, component_name: str):
         try:
@@ -56,7 +56,7 @@ class WeblateMigrator(HttpClient):
 
             return res.json()
         except Exception as e:
-            logger.error(f"Failed to get component: {project_name}/{component_name}, Error: {str(e)}")
+            logger.error(f"Failed to get component: {project_name}/{component_name}, Error: {e}")
          
     def _upload_file(self, url: str, file_path: str):
         try:
@@ -90,3 +90,17 @@ class WeblateMigrator(HttpClient):
 
 if __name__ == "__main__":
     migrator = WeblateMigrator()
+    
+    # example path is /example/<project_name>/<component_name>/locale/<language>/LC_MESSAGES/<component_name>.po
+    # e.g. /example/glance_store/glance_store/locale/ko_KR/LC_MESSAGES/glance_store.po
+    # we need to get "openstack"/project_name, "openstack"/component_name, language, and dir_path
+
+    for project_name in os.listdir("/example"):
+        project = migrator.get_or_create_project(project_name)
+        
+        for component_name in os.listdir(f"/example/{project_name}"):
+            component = migrator.get_or_create_component(project_name, component_name)
+            
+            for language in os.listdir(f"/example/{project_name}/{component_name}/locale"):
+                dir_path = f"/example/{project_name}/{component_name}/locale/{language}/LC_MESSAGES"
+                migrator.upload_translation_po_files(project_name, component_name, language, dir_path)
