@@ -91,8 +91,9 @@ class WeblateMigrator(HttpClient):
                 file_path = os.path.join(dir_path, filename)
                 res = self._upload_file(f'api/translations/{project_name}/{component_name}/{language}/file/', file_path)
                 
-                if res.status_code > 400:
+                if res.status_code >= 400:
                     logger.error(f"Failed to upload translation file: {file_path}, {res.text}")
+                    continue
                     
                 files.append(res.json())
         
@@ -102,13 +103,16 @@ class WeblateMigrator(HttpClient):
 
 
 if __name__ == "__main__":
-    migrator = WeblateMigrator()
+    migrator = WeblateMigrator(
+        url=f"{OPENDEV_OPENSTACK_WEB}/api/",
+        key="your_weblate_api_key"
+    )
     
     # example path is /example/<project_name>/<component_name>/locale/<language>/LC_MESSAGES/<component_name>.po
     # e.g. /example/glance_store/glance_store/locale/ko_KR/LC_MESSAGES/glance_store.po
     # we need to get "openstack"/project_name, "openstack"/component_name, language, and dir_path
     
-    base_path = "/example"
+    base_path = "./example"
 
     for project_name in os.listdir(base_path):
         project = migrator.get_or_create_project(project_name)
@@ -117,6 +121,6 @@ if __name__ == "__main__":
             component = migrator.get_or_create_component(project_name, component_name)
             
             for locale in os.listdir(f"{base_path}/{project_name}/{component_name}/locale"):
+                dir_path = f"{base_path}/{project_name}/{component_name}/locale/{locale}/LC_MESSAGES/"
                 language = migrator.parse_language(locale)
-                dir_path = f"{base_path}/{project_name}/{component_name}/locale/{language}/LC_MESSAGES"
                 migrator.upload_translation_po_files(project_name, component_name, language, dir_path)
