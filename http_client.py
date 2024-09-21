@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 import requests
 
 class HttpClient:
@@ -14,6 +14,7 @@ class HttpClient:
             'Authorization': f'Token {self.key}',
             'Content-Type': 'application/x-www-form-urlencoded',
         }
+    
         
     def get(self, url: str):
         return requests.get(url = f'{self.base_url}/{url}', headers=self.json_headers)
