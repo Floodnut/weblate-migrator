@@ -11,6 +11,17 @@ class File:
     path: str
     template_path: str
     
+    def __hash__(self):
+        return hash(self.path)
+
+    def __eq__(self, other):
+        if isinstance(other, File):
+            return self.path == other.path
+        return False
+
+    def __repr__(self):
+        return f"File(name={self.name}, project={self.project}, component={self.component}, locale={self.locale}, path={self.path}, template_path={self.template_path})"
+    
     @staticmethod
     def from_path(project:str, path: str):
         if not path.endswith(".po"):
@@ -28,5 +39,5 @@ class File:
             locale = locale,
             component = component,
             path = path,
-            template = template_path
+            template_path = template_path
         )

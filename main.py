@@ -1,6 +1,7 @@
 import os
 import logging
 import re
+import time
 
 from wlc import Weblate, Project, Component, WeblateException
 
@@ -10,10 +11,9 @@ from pathlib import Path
 
 from http_client import HttpClient
 from metadata import File
-from docs_explorer import find_all_project_name_from_dirs, find_all_doc_files,  find_all_po_files, po_to_pot
+from docs_explorer import find_all_project_name_from_dirs, find_all_doc_files, po_to_pot
 
 OPENDEV_OPENSTACK_WEB = "https://opendev.org/openstack/"
-WEBLATE_OPENSTACK_API_URL = ""
 logger = logging.getLogger(__name__)
 
 
@@ -27,29 +27,6 @@ class WeblateMigrator(HttpClient):
     def make_slug(self, name: str) -> str:
         return name.lower().replace("/", "_")
     
-    def _create_project(self, project_name: str) -> Response:
-        data = {
-            "name": f"openstack/{project_name}",
-            "slug": f"openstack_{project_name}",
-            "web": f"{OPENDEV_OPENSTACK_WEB}{project_name}",
-        }
-        return self.post("api/projects/", data)
-    
-    def _get_component(self, project_name: str, component_name: str) -> Response:
-        return self.get(f"api/projects/{project_name}/components/{component_name}/")
-    
-    def _create_component(self, project_name: str, component_name: str) -> Response:
-        """Docs
-        
-        https://docs.weblate.org/en/latest/api.html#post--api-projects-(string-project)-components-
-        """
-        data = {
-            "name": component_name,
-            "slug": component_name,
-        }
-
-        return self.post(f"api/projects/{project_name}/components/", data)
-    
     def parse_language(self, language: str) -> str:
         """parse language from locale
 
@@ -60,29 +37,36 @@ class WeblateMigrator(HttpClient):
             return match.group(1)
         else:
             return language
+    
+    def validate_project(self, project_name: str) -> bool:
+        pattern = r'^[^a-zA-Z]|(__|\.)'
+        
+        return re.search(pattern, project_name)
         
     def get_or_create_project(self, project_name: str):
-        try:
-            self.weblate.create_project(project_name)
+        try:            
+            slug = self.make_slug(project_name)
+            self.weblate.create_project(project_name, slug, OPENDEV_OPENSTACK_WEB + project_name)
         except WeblateException as wlce:
             logger.error(f"WeblateException: {project_name}, Error: {wlce}")
         except Exception as e:
             logger.error(f"Failed to get or create project: {project_name}, Error: {e}")
-        else:
-            return self.weblate.get_project(project_name)
+        finally:
+            time.sleep(1)
+            return self.weblate.get_project(slug)
 
 
     def get_or_create_component(self, project_slug: str, component_name: str, component_slug: str,  docfile_path: str):
         try:
-            docfile = open(docfile_path, 'rb')
-            self.weblate.create_component(
-                project_slug, component_name, docfile=docfile, name=component_name, slug=component_slug, file_format="po", filemask="*.po", repo="local:")
+            with open(docfile_path, 'rb') as docfile:
+                self.weblate.create_component(
+                    project_slug, docfile=docfile, name=component_name, slug=component_slug, file_format="po", filemask="*.po", repo="local:")
         except WeblateException as wlce:
             logger.error(f"WeblateException: {project_slug}/{component_name}, Error: {wlce}")
         except Exception as e:
             logger.error(f"Failed to get or create component: {project_slug}/{component_name}, Error: {e}")
-        else:
-            return self.weblate.get_component(project_slug, component_name)
+        finally:
+            return self.weblate.get_component(f"{project_slug}/{component_slug}")
          
     def _upload_file(self, url: str, file_path: str):
         try:
@@ -111,21 +95,32 @@ class WeblateMigrator(HttpClient):
 
     
     def upload_all_translation_po_files(self, projects: List[str], project_path: str="./"):
-        for project_name in projects:
-            docs = find_all_doc_files(project_name, project_path)
+        for project in projects:
+            docs = find_all_doc_files(project, project_path)
             
-            if not docs:
+            if len(docs) == 0:
                 continue
             
+            if self.validate_project(project):
+                continue
+            
+            project_name = f"openstack/{project}"
+            project_slug = self.make_slug(project_name)
             _project = migrator.get_or_create_project(project_name)
             logger.debug(f"Project Response: {_project}")
-            
-            for document in docs:            
+
+            for document in docs:  
+                if document is None:
+                    continue
+
                 language = migrator.parse_language(document.locale)
-                component_slug = self.make_slug(document.component)       
-                _component = migrator.get_or_create_component(project_name, document.component, component_slug, document.template_path)
-                logger.debug(f"Component Response: {_component}")
-                migrator.upload_translation_po_files(project_name, component_slug, language, document.path)
+                component_slug = self.make_slug(document.component)
+                try:  
+                    _component = migrator.get_or_create_component(project_slug, document.component, component_slug, document.template_path)
+                    logger.debug(f"Component Response: {_component}")
+                    migrator.upload_translation_po_files(project_slug, component_slug, language, document.path)
+                except Exception as e:
+                    logger.error(f"Failed to upload translation file: {document.path}, {e}")
                 
 
 if __name__ == "__main__":
@@ -143,7 +138,7 @@ if __name__ == "__main__":
         logger.level = logging.DEBUG
 
     migrator = WeblateMigrator(
-        url=f"{WEBLATE_OPENSTACK_API_URL}",
+        url=f"WEBLATE_OPENSTACK_API_URL",
         key="your_weblate_api_key"
     )
 

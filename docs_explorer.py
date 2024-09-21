@@ -1,6 +1,6 @@
 import os
 
-from typing import List
+from typing import Set, List
 from metadata import File
 from pathlib import Path
 
@@ -57,13 +57,13 @@ def find_all_doc_files(project: str, path: str) -> List[File]:
     files: List[File] = []
     for file in root_path.rglob('*.po'):
         if file.is_file():
-            po_file = File.from_path(project, path)
+            po_file = File.from_path(project, file.as_posix())
             files.append(po_file)
 
-        if not Path(files[-1].template_path).is_file():
+        if files[-1] is not None and not Path(files[-1].template_path).is_file():
             po_to_pot(files[-1].path, files[-1].template_path)
     
-    return files
+    return list(set(files))
     
 
 def find_all_project_name_from_dirs(base_path: str="./") -> List[str]:
