@@ -9,7 +9,6 @@ class File:
     component: str
     locale: str
     path: str
-    template_path: str
     
     def __hash__(self):
         return hash(self.path)
@@ -20,7 +19,7 @@ class File:
         return False
 
     def __repr__(self):
-        return f"File(name={self.name}, project={self.project}, component={self.component}, locale={self.locale}, path={self.path}, template_path={self.template_path})"
+        return f"File(name={self.name}, project={self.project}, component={self.component}, locale={self.locale}, path={self.path})"
     
     @staticmethod
     def from_path(project:str, path: str):
@@ -29,9 +28,8 @@ class File:
         
         parts = path.split('/')
         name = parts[-1]
-        locale = parts[0]
+        locale = parts[1]
         component = name.split('.')[0]
-        template_path = f"{project}/{component}.pot"
 
         return File(
             name = name,
@@ -39,5 +37,4 @@ class File:
             locale = locale,
             component = component,
             path = path,
-            template_path = template_path
         )

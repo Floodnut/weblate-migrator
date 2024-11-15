@@ -12,7 +12,6 @@ class HttpClient:
         
         self.form_headers = {
             'Authorization': f'Token {self.key}',
-            'Content-Type': 'application/x-www-form-urlencoded',
         }
     
         
@@ -24,7 +23,9 @@ class HttpClient:
     
     def form_post(self, url: str, data: Optional[dict] = None, file_path: Optional[str] = None):
         if file_path:
-            return requests.post(url = f'{self.base_url}/{url}', headers=self.form_headers, files={'file': open(file_path, 'rb')})
+            with open(file_path, 'rb') as _file:
+                file = {'file': _file}
+                return requests.post(url = f'{self.base_url}/{url}', headers=self.form_headers, files=file)
         
         return requests.post(url = f'{self.base_url}/{url}', headers=self.form_headers, data=data)
         

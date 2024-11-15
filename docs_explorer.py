@@ -1,55 +1,14 @@
 import os
 
-from typing import Set, List
+from typing import List
 from metadata import File
 from pathlib import Path
-
-
-def _po_to_pot(po_file_path: str, pot_file_path: str):
-    with open(po_file_path, 'r', encoding='utf-8') as po_file:
-        lines = po_file.readlines()
-    
-    pot_lines = []
-    in_msgid_block = False
-    
-    for line in lines:
-
-        if line.startswith('msgid'):
-            in_msgid_block = True
-            pot_lines.append(line)
-
-        elif line.startswith('msgstr'):
-            if in_msgid_block:
-                pot_lines.append('msgstr ""\n')
-                in_msgid_block = False
-        else:
-            pot_lines.append(line)
-    
-        # POT 파일로 저장
-        with open(pot_file_path, 'w', encoding='utf-8') as pot_file:
-            pot_file.writelines(pot_lines)
-
-def po_to_pot(po_file_path: str, pot_file_path: str):
-    """Convert a .po file to a .pot file."""
-    
-    try:
-        import polib
-        po = polib.pofile(po_file_path)
-        pot = polib.POFile()
-
-        for entry in po:
-            entry.msgstr = ""
-            pot.append(entry)
-
-        pot.save(pot_file_path)
-    except ImportError:
-        _po_to_pot(po_file_path, pot_file_path)
 
 
 def find_all_doc_files(project: str, path: str) -> List[File]:
     """Find all doc files in the given path and return a list of File objects.
     
-    If the template file(.pot) does not exist, create it from the doc file.
+    If the template file(.po) does not exist, create it from the doc file.
     """
     
     root_path = Path(path)
@@ -59,9 +18,6 @@ def find_all_doc_files(project: str, path: str) -> List[File]:
         if file.is_file():
             po_file = File.from_path(project, file.as_posix())
             files.append(po_file)
-
-        if files[-1] is not None and not Path(files[-1].template_path).is_file():
-            po_to_pot(files[-1].path, files[-1].template_path)
     
     return list(set(files))
     
